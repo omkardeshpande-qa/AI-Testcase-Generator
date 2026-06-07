@@ -250,7 +250,7 @@ Validate AI application behavior before release.
 Add screenshots of the application here.
 
 ```markdown
-![Dashboard](assets/screenshots/dashboard.png)
+![Dashboard](assets/screenshots/dashboard.jpg)
 ```
 
 ---
