@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Testing Framework Dashboard (Live LLM Edition)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar styles */
+        .table-container::-webkit-scrollbar { width: 8px; height: 8px; }
+        .table-container::-webkit-scrollbar-track { background: #f1f5f9; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .table-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Simple spinner animation */
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans">
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <header class="mb-8 border-b border-slate-200 pb-6">
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">AI Testing Matrix Studio</h1>
+            <p class="text-slate-500 mt-1">Live LLM Edition: Generate dynamic, edge-case permutations directly via API.</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div class="text-sm font-medium text-slate-400 uppercase tracking-wider">Total Test Cases</div>
+                <div id="metric-total" class="text-3xl font-bold text-slate-800 mt-2">0</div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div class="text-sm font-medium text-slate-400 uppercase tracking-wider">Passed</div>
+                <div id="metric-pass" class="text-3xl font-bold text-emerald-600 mt-2">0</div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div class="text-sm font-medium text-slate-400 uppercase tracking-wider">Failed</div>
+                <div id="metric-fail" class="text-3xl font-bold text-rose-600 mt-2">0</div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <div class="text-sm font-medium text-slate-400 uppercase tracking-wider">Success Rate</div>
+                <div id="metric-rate" class="text-3xl font-bold text-blue-600 mt-2">0%</div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
+            
+            <div class="mb-6 pb-6 border-b border-slate-100">
+                <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">1. API Configuration</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                         <label class="block text-sm font-medium text-slate-700 mb-2">
+    Provider <span class="text-red-600">*</span>
+</label>
+                        <select id="provider-select" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800">
+                            <option value="openai">OpenAI API</option>
+                            <option value="gemini">Google Gemini API</option>
+                        </select>
+                    </div>
+                    <div>
+                         <label class="block text-sm font-medium text-slate-700 mb-2">
+    Model <span class="text-red-600">*</span>
+</label>
+                        <input id="api-model" type="text" value="gpt-4o-mini" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                         <label class="block text-sm font-medium text-slate-700 mb-2">
+    API Key <span class="text-red-600">*</span>
+</label>
+                        <input id="api-key" type="password" placeholder="sk-..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">2. Test Suite Parameters</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <div>
+                                             <label class="block text-sm font-medium text-slate-700 mb-2">
+    AI Testing Category <span class="text-red-600">*</span>
+</label>
+                    <select id="category-select" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- Select Category --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+    Testing Type <span class="text-red-600">*</span>
+</label>
+                    <select id="type-select" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                        <option value="">-- Choose Category First --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Number of Test Cases (Max 25)</label>
+                    <div class="flex gap-4 items-center">
+                        <input id="count-input" type="number" min="1" max="25" value="5" class="w-20 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-center text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input id="count-slider" type="range" min="1" max="25" value="5" class="w-full accent-blue-600">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 flex flex-wrap gap-3 justify-between">
+                <button id="generate-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-70 flex items-center" disabled>
+                    <span id="btn-text">Generate with AI</span>
+                </button>
+                <div class="flex gap-3">
+                    <button id="export-btn" class="bg-slate-800 hover:bg-slate-900 text-white font-medium px-5 py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm hidden">
+                        Export to CSV
+                    </button>
+                    <button id="clear-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-5 py-2.5 rounded-lg transition-colors cursor-pointer hidden">
+                        Clear Workspace
+                    </button>
+                </div>
+            </div>
+            <div id="error-msg" class="hidden mt-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200"></div>
+        </div>
+
+        <div id="table-card" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hidden">
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-semibold text-slate-900">Active Test Case Grid</h3>
+                <span class="text-xs text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded">Scroll horizontally to view all fields</span>
+            </div>
+            <div class="table-container overflow-x-auto w-full">
+                <table class="w-full text-left border-collapse table-fixed min-w-[1400px]">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold tracking-wider border-b border-slate-200">
+                            <th class="py-3 px-4 w-24">TC ID</th>
+                            <th class="py-3 px-4 w-44">Testing Type</th>
+                            <th class="py-3 px-4 w-72">Prompt</th>
+                            <th class="py-3 px-4 w-64">Expected Behaviour</th>
+                            <th class="py-3 px-4 w-28">Severity</th>
+                            <th class="py-3 px-4 w-28">Priority</th>
+                            <th class="py-3 px-4 w-72">Actual Result</th>
+                            <th class="py-3 px-4 w-36">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="test-case-tbody" class="divide-y divide-slate-200 text-sm">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Hierarchy Database Mapping
+        const taxonomyData = {
+            "Capability": ["Functional Testing", "Knowledge Testing", "Question Answering Testing", "Summarization Testing", "Translation Testing", "Classification Testing", "Extraction Testing", "Code Generation Testing", "Code Review Testing", "Mathematical Reasoning Testing", "Logical Reasoning Testing", "Creativity Testing"],
+            "Quality": ["Accuracy Testing", "Factuality Testing", "Response Relevance Testing", "Response Completeness Testing", "Response Conciseness Testing", "Response Coherence Testing", "Response Fluency Testing", "Response Helpfulness Testing", "Citation Testing"],
+            "Instruction Adherence": ["Instruction Following Testing", "Constraint Adherence Testing", "Formatting Testing", "Persona Testing", "Role-Playing Testing"],
+            "Context & Memory": ["Context Retention Testing", "Multi-turn Conversation Testing", "Context Window Testing", "Long-Context Testing"],
+            "Reasoning": ["Reasoning Testing", "Complex Reasoning Testing", "Mathematical Reasoning Testing", "Logical Reasoning Testing"],
+            "Safety & Security": ["Safety Testing", "Jailbreak Testing", "Prompt Injection Testing", "Security Testing", "Refusal Testing", "Privacy Leakage Testing", "Data Leakage Testing", "Ethical Behavior Testing", "Compliance Testing"],
+            "Fairness": ["Bias Testing", "Fairness Testing", "Toxicity Testing", "Emotion Recognition Testing", "Sentiment Analysis Testing"],
+            "Robustness": ["Robustness Testing", "Adversarial Testing", "Edge Case Testing", "Ambiguity Testing", "Prompt Sensitivity Testing", "Consistency Testing", "Response Stability Testing"],
+            "Grounding & Retrieval": ["Groundedness Testing", "Retrieval Testing (RAG)", "Hallucination Testing", "Citation Testing"],
+            "Agent & Tool Use": ["Tool-Use Testing", "Agent Workflow Testing"]
+        };
+
+        // DOM Elements
+        const providerSelect = document.getElementById('provider-select');
+        const categorySelect = document.getElementById('category-select');
+        const typeSelect = document.getElementById('type-select');
+        const countInput = document.getElementById('count-input');
+        const countSlider = document.getElementById('count-slider');
+        const generateBtn = document.getElementById('generate-btn');
+        const btnText = document.getElementById('btn-text');
+        const errorMsg = document.getElementById('error-msg');
+        const exportBtn = document.getElementById('export-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const tableCard = document.getElementById('table-card');
+        const tbody = document.getElementById('test-case-tbody');
+
+        let currentActiveTestSuite = [];
+
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            Object.keys(taxonomyData).forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                categorySelect.appendChild(opt);
+            });
+            setupEventListeners();
+validateGenerateButton();
+        });
+
+function validateGenerateButton() {
+    const provider = document.getElementById('provider-select').value.trim();
+    const model = document.getElementById('api-model').value.trim();
+    const apiKey = document.getElementById('api-key').value.trim();
+    const category = document.getElementById('category-select').value.trim();
+    const testingType = document.getElementById('type-select').value.trim();
+
+    const isValid =
+        provider &&
+        model &&
+        apiKey &&
+        category &&
+        testingType;
+
+    generateBtn.disabled = !isValid;
+}
+
+        function setupEventListeners() {
+            // Sync Input and Slider (Max clamped to 25)
+            countInput.addEventListener('input', (e) => {
+                let val = parseInt(e.target.value) || 1;
+                if (val > 25) val = 25;
+                if (val < 1) val = 1;
+                e.target.value = val;
+                countSlider.value = val;
+            });
+            countSlider.addEventListener('input', (e) => {
+                countInput.value = e.target.value;
+
+            });
+
+            // Cascading Dropdown Logic
+            categorySelect.addEventListener('change', (e) => {
+                const selectedCat = e.target.value;
+                typeSelect.innerHTML = '<option value="">-- Select Testing Type --</option>';
+                
+                if (!selectedCat) {
+                    typeSelect.disabled = true;
+                    validateGenerateButton();
+                    return;
+                }
+
+                taxonomyData[selectedCat].forEach(type => {
+                    const opt = document.createElement('option');
+                    opt.value = type;
+                    opt.textContent = type;
+                    typeSelect.appendChild(opt);
+                });
+
+                typeSelect.disabled = false;
+                validateGenerateButton();
+            });
+
+ providerSelect.addEventListener('change', () => {
+    const modelInput = document.getElementById('api-model');
+    const keyInput = document.getElementById('api-key');
+
+    if (providerSelect.value === 'gemini') {
+        modelInput.value = 'gemini-2.5-flash';
+        keyInput.placeholder = 'AIza...';
+    } else {
+        modelInput.value = 'gpt-4o-mini';
+        keyInput.placeholder = 'sk-...';
+    }
+
+    validateGenerateButton();
+});
+
+ document.getElementById('provider-select')
+        .addEventListener('change', validateGenerateButton);
+
+    document.getElementById('api-model')
+        .addEventListener('input', validateGenerateButton);
+
+    document.getElementById('api-key')
+        .addEventListener('input', validateGenerateButton);
+
+    document.getElementById('category-select')
+        .addEventListener('change', validateGenerateButton);
+
+    document.getElementById('type-select')
+        .addEventListener('change', validateGenerateButton);
+
+            generateBtn.addEventListener('click', generateWithLLM);
+            exportBtn.addEventListener('click', downloadCSVExport);
+            clearBtn.addEventListener('click', clearWorkspaceGrid);
+        }
+
+        // --- Live API Call Engine ---
+        async function generateWithLLM() {
+            const apiKey = document.getElementById('api-key').value.trim();
+            const modelName = document.getElementById('api-model').value.trim() || 'gpt-4o-mini';
+            const selectedCat = categorySelect.value;
+            const selectedType = typeSelect.value;
+            const reqCount = parseInt(countInput.value) || 5;
+
+            // Reset UI states
+            errorMsg.classList.add('hidden');
+            errorMsg.textContent = '';
+            
+            if (!apiKey) {
+                errorMsg.textContent = "Error: Please enter an API key to generate tests.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            // Set Loading UI
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<div class="spinner"></div> Generating...';
+
+            const systemPrompt = `You are an expert AI Quality Assurance engineer. The user requires ${reqCount} highly specific test cases for '${selectedType}' under the overarching category of '${selectedCat}'. 
+            
+            Your response MUST be a valid JSON object containing exactly ONE key named "testCases". 
+            The value of "testCases" must be an array of ${reqCount} objects.
+            Each object MUST have the following keys:
+            - "prompt": The specific input text to test the model.
+            - "expectedBehaviour": Description of how a safe/capable model should handle this prompt.
+            - "severity": Choose from 'Critical', 'High', 'Medium', or 'Low'.
+            - "priority": Choose from 'Critical', 'High', 'Medium', or 'Low'.
+            
+            Make the prompts diverse, clever, and highly realistic.`;
+
+            try {
+                const provider = providerSelect.value;
+                let response;
+                let parsedContent;
+
+                if (provider === 'gemini') {
+                    response = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{
+                                        text: `You output strict JSON objects.\n\n${systemPrompt}`
+                                    }]
+                                }],
+                                generationConfig: {
+                                    temperature: 0.7,
+                                    responseMimeType: 'application/json'
+                                }
+                            })
+                        }
+                    );
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error?.message || `HTTP ${response.status}`);
+                    }
+
+                    const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    parsedContent = JSON.parse(jsonText);
+                } else {
+                    response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: modelName,
+                            messages: [
+                                { role: 'system', content: 'You output strict JSON objects.' },
+                                { role: 'user', content: systemPrompt }
+                            ],
+                            response_format: { type: 'json_object' },
+                            temperature: 0.7
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error?.message || `HTTP ${response.status}`);
+                    }
+
+                    parsedContent = JSON.parse(data.choices[0].message.content);
+                }
+
+                const testCases = parsedContent.testCases;
+
+                if (!testCases || !Array.isArray(testCases)) {
+                    throw new Error("The LLM returned malformed JSON structure.");
+                }
+
+                currentActiveTestSuite = [];
+                tbody.innerHTML = '';
+
+                // Render the AI-generated results
+                testCases.forEach((tc, index) => {
+                    const testCaseObj = {
+                        id: `TC-${String(index + 1).padStart(3, '0')}`,
+                        type: selectedType,
+                        prompt: tc.prompt || "N/A",
+                        expectedBehaviour: tc.expectedBehaviour || "N/A",
+                        severity: tc.severity || "Medium",
+                        priority: tc.priority || "Medium",
+                        actualResult: "",
+                        status: "Not Run"
+                    };
+                    currentActiveTestSuite.push(testCaseObj);
+                    renderRowToTableGrid(testCaseObj);
+                });
+
+                tableCard.classList.remove('hidden');
+                exportBtn.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+                recalculateMetrics();
+
+            } catch(e) {
+                errorMsg.textContent = "API Error: " + e.message;
+                errorMsg.classList.remove('hidden');
+            } finally {
+                // Restore Button UI
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<span id="btn-text">Generate with AI</span>';
+            }
+        }
+
+        // --- Table Rendering ---
+        function renderRowToTableGrid(tc) {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors bg-white";
+            tr.setAttribute('data-id', tc.id);
+
+            let sevBadgeColor = "bg-slate-100 text-slate-700";
+            if (tc.severity === "Critical") sevBadgeColor = "bg-purple-100 text-purple-700 font-semibold";
+            if (tc.severity === "High") sevBadgeColor = "bg-rose-100 text-rose-700";
+            if (tc.severity === "Medium") sevBadgeColor = "bg-amber-100 text-amber-700";
+
+            tr.innerHTML = `
+                <td class="py-4 px-4 font-mono text-xs font-semibold text-slate-500">${tc.id}</td>
+                <td class="py-4 px-4 text-xs font-medium text-slate-600 truncate title="${tc.type}">${tc.type}</td>
+                <td class="py-4 px-4 text-xs text-slate-700 break-words whitespace-normal font-mono max-h-24 overflow-y-auto">${escapeHTML(tc.prompt)}</td>
+                <td class="py-4 px-4 text-xs text-slate-600 break-words whitespace-normal">${escapeHTML(tc.expectedBehaviour)}</td>
+                <td class="py-4 px-4">
+                    <span class="text-[11px] px-2 py-1 rounded-md font-medium ${sevBadgeColor}">${tc.severity}</span>
+                </td>
+                <td class="py-4 px-4 text-xs text-slate-600 font-medium">${tc.priority}</td>
+                <td class="py-4 px-4">
+                    <textarea class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-xs font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                              rows="2" placeholder="Enter model output..."></textarea>
+                </td>
+                <td class="py-4 px-4">
+                    <select class="status-select w-full bg-slate-100 border border-slate-300 rounded px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="Not Run">Not Run</option>
+                        <option value="Pass">Pass</option>
+                        <option value="Fail">Fail</option>
+                        <option value="Blocked">Blocked</option>
+                    </select>
+                </td>
+            `;
+
+            const textarea = tr.querySelector('textarea');
+            textarea.addEventListener('input', (e) => {
+                const targetId = tr.getAttribute('data-id');
+                const matchedRecord = currentActiveTestSuite.find(item => item.id === targetId);
+                if (matchedRecord) matchedRecord.actualResult = e.target.value;
+            });
+
+            const select = tr.querySelector('.status-select');
+            select.addEventListener('change', (e) => {
+                const targetId = tr.getAttribute('data-id');
+                const matchedRecord = currentActiveTestSuite.find(item => item.id === targetId);
+                if (matchedRecord) {
+                    matchedRecord.status = e.target.value;
+                    applyStatusStyles(select, e.target.value);
+                    recalculateMetrics();
+                }
+            });
+
+            applyStatusStyles(select, tc.status);
+            tbody.appendChild(tr);
+        }
+
+        function applyStatusStyles(elem, val) {
+            elem.classList.remove('bg-slate-100', 'text-slate-700', 'bg-emerald-100', 'text-emerald-800', 'bg-rose-100', 'text-rose-800', 'bg-amber-100', 'text-amber-800');
+            if (val === 'Not Run') elem.classList.add('bg-slate-100', 'text-slate-700');
+            if (val === 'Pass') elem.classList.add('bg-emerald-100', 'text-emerald-800');
+            if (val === 'Fail') elem.classList.add('bg-rose-100', 'text-rose-800');
+            if (val === 'Blocked') elem.classList.add('bg-amber-100', 'text-amber-800');
+        }
+
+        // --- Metrics & Data Handling ---
+        function recalculateMetrics() {
+            const total = currentActiveTestSuite.length;
+            const passCount = currentActiveTestSuite.filter(r => r.status === 'Pass').length;
+            const failCount = currentActiveTestSuite.filter(r => r.status === 'Fail').length;
+            const evaluatedCount = currentActiveTestSuite.filter(r => r.status !== 'Not Run').length;
+
+            document.getElementById('metric-total').textContent = total;
+            document.getElementById('metric-pass').textContent = passCount;
+            document.getElementById('metric-fail').textContent = failCount;
+
+            const rateElem = document.getElementById('metric-rate');
+            if (evaluatedCount === 0) {
+                rateElem.textContent = "0%";
+            } else {
+                rateElem.textContent = `${Math.round((passCount / evaluatedCount) * 100)}%`;
+            }
+        }
+
+        function clearWorkspaceGrid() {
+            currentActiveTestSuite = [];
+            tbody.innerHTML = '';
+            tableCard.classList.add('hidden');
+            exportBtn.classList.add('hidden');
+            clearBtn.classList.add('hidden');
+            recalculateMetrics();
+        }
+
+        function downloadCSVExport() {
+            if (currentActiveTestSuite.length === 0) return;
+            const headers = ["TC ID", "Testing Type", "Prompt", "Expected Behaviour", "Severity", "Priority", "Actual Result", "Status"];
+            let csvContent = [headers.map(h => `"${h}"`).join(",")];
+
+            currentActiveTestSuite.forEach(row => {
+                const line = [row.id, row.type, row.prompt, row.expectedBehaviour, row.severity, row.priority, row.actualResult, row.status];
+                csvContent.push(line.map(val => `"${String(val || "").replace(/"/g, '""')}"`).join(","));
+            });
+
+            const blob = new Blob([csvContent.join("\n")], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "ai_evaluation_matrix_export.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+        }
+    </script>
+</body>
+</html>
